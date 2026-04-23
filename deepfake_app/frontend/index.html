@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo-container">
+                <h1>Explainable Deepfake Analysis</h1>
+            </div>
+        </header>
+
+        <main>
+            <!-- Error Card -->
+            <div id="errorCard" class="error-card hidden">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <div class="error-content">
+                    <h4>Analysis Failed</h4>
+                    <p id="errorTxt"></p>
+                </div>
+                <button class="btn secondary btn-sm" id="closeErrorBtn">Try Again</button>
+            </div>
+
+            <section class="upload-section" id="uploadSection">
+                <div class="drop-zone" id="dropZone">
+                    <div class="upload-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h2>Drag & Drop Video File</h2>
+                    <p>or click to browse</p>
+                    <span class="file-limits">Supported: .mp4, .avi</span>
+                    <input type="file" id="fileInput" accept=".mp4,.avi" hidden>
+                </div>
+
+                <div class="preview-container hidden" id="previewContainer">
+                    <video id="videoPreview" controls muted></video>
+                    <div class="preview-actions">
+                        <button class="btn secondary" id="cancelUploadBtn">Cancel</button>
+                        <button class="btn primary pulse-btn" id="confirmUploadBtn">Analyze Video</button>
+                    </div>
+                </div>
+
+                <div class="processing-overlay" id="processingOverlay">
+                    <div class="loader"></div>
+                    <h3>Analyzing Multimodal Stream</h3>
+                    <p>Extracting frames, audio, and generating XAI sequences...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="dashboard-section hidden" id="dashboardSection">
+                <div class="top-row">
+                    <div class="card result-card" id="finalResultCard">
+                        <h3>Final Prediction</h3>
+                        <div class="prediction-value" id="predictionValue">Fake</div>
+                        <div class="confidence-gauge">
+                            <svg class="circular-chart" viewBox="0 0 36 36">
+                                <path class="circle-bg"
+                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle" id="confidenceCircle" stroke-dasharray="0, 100"
+                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="percentage" id="confidenceText">0%</div>
+                        </div>
+                    </div>
+
+                    <div class="card summary-card">
+                        <h3>AI Decision Summary <span class="badge">Interpretability</span></h3>
+                        <p class="summary-text" id="decisionSummaryTxt">
+                            Initializing neural explanations...
+                        </p>
+                    </div>
+
+                    <div class="card metrics-card hover-lift">
+                        <h3>Detailed Analysis</h3>
+                        <div class="metric-row">
+                            <span class="metric-label">Video Score</span>
+                            <div class="metric-bar-container">
+                                <div class="metric-bar v-score" id="videoScoreBar"></div>
+                            </div>
+                            <span class="metric-val" id="videoScoreTxt">0.00</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Audio Score</span>
+                            <div class="metric-bar-container">
+                                <div class="metric-bar a-score" id="audioScoreBar"></div>
+                            </div>
+                            <span class="metric-val" id="audioScoreTxt">0.00</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Fake Frame Ratio</span>
+                            <div class="metric-bar-container">
+                                <div class="metric-bar f-ratio" id="fakeRatioBar"></div>
+                            </div>
+                            <span class="metric-val" id="fakeRatioTxt">0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="xai-row">
+                    <div class="card timeline-card hover-lift">
+                        <h3>Frame-Level Manipulation Timeline</h3>
+                        <div class="canvas-wrapper">
+                            <canvas id="timelineChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card fusion-card hover-lift">
+                        <h3>Fusion Gating Weights</h3>
+                        <div class="fusion-gauges">
+                            <div class="fgauge">
+                                <div class="fgauge-val" id="fwVideoTxt">0.00</div>
+                                <div class="fgauge-lbl">Visual</div>
+                                <div class="fgauge-bar">
+                                    <div class="fgauge-fill" id="fwVideoBar"></div>
+                                </div>
+                            </div>
+                            <div class="fgauge">
+                                <div class="fgauge-val" id="fwAudioTxt">0.00</div>
+                                <div class="fgauge-lbl">Audio</div>
+                                <div class="fgauge-bar">
+                                    <div class="fgauge-fill" id="fwAudioBar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card top-frames-card">
+                    <h3>High Manipulation Frames <span class="badge">Explainability</span></h3>
+                    <div class="frames-grid" id="topFramesGrid"></div>
+                </div>
+
+                <div class="bottom-metadata-row">
+                    <div class="card insights-card hover-lift">
+                        <h3>Advanced Metrics</h3>
+                        <div class="insight-item">
+                            <span class="lbl-small">Sampled Frames</span>
+                            <span class="val-small" id="framesAnalyzedTxt">0 / 0</span>
+                        </div>
+                        <div class="insight-item">
+                            <span class="lbl-small">Stability Score</span>
+                            <span class="val-small" id="stabilityTxt">0.0</span>
+                        </div>
+                        <div class="insight-item">
+                            <span class="lbl-small">Audio Presence</span>
+                            <span class="val-small" id="audioPresenceTxt">No</span>
+                        </div>
+                        <div class="insight-item">
+                            <span class="lbl-small">Processing FPS</span>
+                            <span class="val-small" id="procTimeTxt">0 fps</span>
+                        </div>
+                    </div>
+
+                    <div class="card transparency-card hover-lift">
+                        <h3>Model Architecture <span class="badge gray">Transparency</span></h3>
+                        <ul class="arch-list">
+                            <li><strong>Visual Encoder:</strong> MobileNetV2</li>
+                            <li><strong>Audio Encoder:</strong> Wav2Vec2 Base</li>
+                            <li><strong>Fusion Policy:</strong> Adaptive Parameter Gating</li>
+                            <li><strong>Pool Strategy:</strong> Mean Pool (Hollistic Sequence)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="actions-row">
+                    <button class="btn secondary" id="resetBtn">Analyze New Video</button>
+                    <button class="btn primary" id="reportBtn">Download PDF Report</button>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

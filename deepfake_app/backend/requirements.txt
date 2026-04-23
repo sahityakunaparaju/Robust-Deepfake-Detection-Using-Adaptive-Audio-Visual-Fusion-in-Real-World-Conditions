@@ -1,0 +1,10 @@
+fastapi==0.104.1
+uvicorn==0.24.0.post1
+python-multipart==0.0.6
+opencv-python==4.8.1.78
+soundfile==0.12.1
+numpy==1.26.0
+torch>=2.0.0
+torchvision>=0.15.0
+transformers==4.37.0
+reportlab==4.0.7

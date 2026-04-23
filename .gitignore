@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pkl
+*.h5
+*.pt
+*.pth
+.env
+dataset/
+models/
+venv/
