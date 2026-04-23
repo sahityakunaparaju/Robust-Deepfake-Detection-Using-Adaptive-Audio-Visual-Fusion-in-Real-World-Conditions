@@ -1,195 +1,132 @@
 # Explainable Deepfake Analysis
 
-An end-to-end multimodal deepfake detection system that combines visual and audio evidence, exposes modality-level fusion weights, and provides frame-level interpretability through an interactive dashboard and downloadable PDF reports.
+Multimodal deepfake detection with interpretable outputs, combining visual and audio evidence through adaptive fusion.  
+This project provides a complete workflow: upload video, run analysis, inspect frame-level evidence, and download a PDF report.
 
-## 1) Project Overview
+## What This Project Does
 
-This repository implements a practical deepfake analysis stack with three core goals:
+- Classifies video as `Real` or `Fake`
+- Shows confidence and per-frame manipulation scores
+- Exposes modality contribution (`visual` vs `audio`) via fusion weights
+- Surfaces top suspicious frames for explainability
+- Generates a downloadable analysis report
 
-- **Detection**: classify an input video as `Fake` or `Real`.
-- **Interpretability**: expose why the decision was made (frame-level scores, top suspicious frames, modality contributions).
-- **Operational usability**: provide a browser dashboard and report export API for reproducible analysis workflows.
+## Dashboard Preview
 
-The backend is built with FastAPI, the model pipeline uses PyTorch + torchvision + Wav2Vec2, and the frontend is a static HTML/CSS/JS interface with Chart.js visualizations.
+![Real prediction dashboard](deepfake_app/assets/dashboard-real.png)
+![Detailed interpretability dashboard](deepfake_app/assets/dashboard-details.png)
+![Fake prediction dashboard](deepfake_app/assets/dashboard-fake.png)
 
-## 2) Dashboard Samples
+## Why It Is Useful
 
-The following screenshots are included under `assets/`:
+Most detection demos return only a final label. This system is designed for transparency:
 
-- Real-classification dashboard view  
-  `assets/dashboard-real.png`
-- Extended interpretability section with top manipulated frames and advanced metrics  
-  `assets/dashboard-details.png`
-- Fake-classification dashboard view  
-  `assets/dashboard-fake.png`
+- **Global explanation**: final prediction and confidence
+- **Temporal explanation**: frame-level fake probability timeline
+- **Modal explanation**: adaptive gate showing reliance on visual vs audio evidence
 
-To display them in markdown:
+This makes the output easier to audit in practical forensic and research settings.
 
-![Real prediction dashboard](assets/dashboard-real.png)
-![Detailed interpretability dashboard](assets/dashboard-details.png)
-![Fake prediction dashboard](assets/dashboard-fake.png)
+## Technical Overview
 
-## 3) System Architecture
+### Model
 
-### 3.1 Backend Service
+- Visual encoder: `MobileNetV2`
+- Audio encoder: `Wav2Vec2 Base` (`facebook/wav2vec2-base`)
+- Fusion: adaptive scalar gate
+- Classifier: MLP over fused embeddings
 
-Located in `backend/main.py`:
+### Pipeline
 
-- `POST /api/analyze`: accepts `.mp4` / `.avi`, runs model inference, returns structured explainability payload.
-- `POST /api/report`: generates a PDF report from returned analysis JSON.
-- Static file serving at `/static` for exported top-frame images.
+1. Sample frames from input video
+2. Detect and crop face regions
+3. Extract mono 16 kHz audio via `ffmpeg`
+4. Run frame-wise and sequence-wise inference
+5. Rank top manipulated frames
+6. Return structured JSON + optional PDF
 
-### 3.2 Inference Model
-
-Implemented in `backend/model.py`:
-
-- **Visual encoder**: `MobileNetV2` feature extractor (`torchvision`).
-- **Audio encoder**: `Wav2Vec2 base` (`facebook/wav2vec2-base`, frozen during downstream inference).
-- **Fusion**: learned scalar gate over concatenated modality embeddings.
-- **Classifier**: MLP over fused visual/audio representation.
-
-The gate provides an interpretable estimate of audio vs visual reliance:
-
-- `fusion_weights.audio = mean(gate)`
-- `fusion_weights.video = 1 - mean(gate)`
-
-### 3.3 Frontend Interface
-
-Located in `frontend/`:
-
-- Drag-and-drop upload and preview workflow.
-- Live analysis progress overlay.
-- Results dashboard with:
-  - final prediction and confidence gauge,
-  - frame-level manipulation timeline,
-  - modality scores and fusion weights,
-  - top manipulated frame thumbnails,
-  - metadata (stability, audio presence, processing FPS),
-  - one-click PDF report download.
-
-## 4) Inference and Explainability Pipeline
-
-For each uploaded video:
-
-1. **Frame extraction**: uniformly sample frames from the sequence; detect/crop face regions using Haar cascades; resize to `224x224`.
-2. **Audio extraction**: use `ffmpeg` to resample mono waveform (`16 kHz`), normalize amplitude, and pad/truncate to fixed length.
-3. **Per-frame scoring**: run single-frame passes to estimate frame-level fake probabilities.
-4. **Holistic prediction**: run full sequence pass for final video confidence.
-5. **Top-frame mining**: rank frames by manipulation score and export top-5 thumbnails.
-6. **Structured output**:
-   - `prediction`, `confidence`
-   - `video_score`, `audio_score`, `fake_frame_ratio`
-   - `frame_predictions`
-   - `fusion_weights`
-   - `decision_summary`
-   - `metadata` and `top_frames`
-
-## 5) Repository Layout
+## Project Structure
 
 ```text
-deepfake_app/
-├── backend/
-│   ├── main.py               # FastAPI service, upload + report endpoints
-│   ├── model.py              # Inference model and analysis pipeline
-│   ├── debug.py              # Diagnostic audit script
-│   ├── debug_model.py        # Alternative debug/inference variant
-│   └── requirements.txt
-├── frontend/
-│   ├── index.html            # Dashboard structure
-│   ├── style.css             # UI styling
-│   └── script.js             # Upload flow, API calls, chart rendering
-├── uploads/
-│   └── deepfake_detection.py # Training/experimentation script snapshot
-├── assets/                   # Dashboard screenshots
-└── README.md
+deepfake_detection/
+├── README.md
+└── deepfake_app/
+    ├── backend/
+    │   ├── main.py
+    │   ├── model.py
+    │   ├── debug.py
+    │   ├── debug_model.py
+    │   └── requirements.txt
+    ├── frontend/
+    │   ├── index.html
+    │   ├── style.css
+    │   └── script.js
+    ├── uploads/
+    │   └── deepfake_detection.py
+    └── assets/
+        ├── dashboard-real.png
+        ├── dashboard-details.png
+        └── dashboard-fake.png
 ```
 
-## 6) Setup and Execution
+## Quick Start
 
-## Prerequisites
-
-- Python 3.10+ recommended
-- `ffmpeg` available on system PATH
-- Optional: CUDA-enabled GPU for faster inference
-
-## Installation
+### 1) Install dependencies
 
 ```bash
 cd deepfake_app/backend
 pip install -r requirements.txt
 ```
 
-## Start Backend API
+### 2) Run backend API
 
 ```bash
 cd deepfake_app/backend
 python main.py
 ```
 
-Server default: `http://localhost:8000`
+Backend runs at: `http://localhost:8000`
 
-## Launch Frontend
+### 3) Open frontend
 
-Open `deepfake_app/frontend/index.html` in a browser (or serve it with any static file server).  
-Ensure backend is running on `localhost:8000` as expected by `frontend/script.js`.
+Open `deepfake_app/frontend/index.html` in your browser.  
+Upload a `.mp4` or `.avi` file and run analysis.
 
-## 7) API Contract
+## API Endpoints
 
 ### `POST /api/analyze`
 
-Request:
-
-- multipart form-data with file field: `video`
-
-Response (abridged):
-
-```json
-{
-  "prediction": "Fake",
-  "confidence": 0.84,
-  "video_score": 0.95,
-  "audio_score": 0.84,
-  "fake_frame_ratio": 1.0,
-  "frame_predictions": [0.82, 0.70, 0.76],
-  "fusion_weights": { "video": 0.56, "audio": 0.44 },
-  "stability_score": 0.98,
-  "decision_summary": "The video is classified as FAKE...",
-  "metadata": {
-    "audio_detected": true,
-    "processing_efficiency_fps": 0.6
-  },
-  "top_frames": [
-    { "frame_index": 15, "score": 0.97, "image_path": "/static/frames/..." }
-  ]
-}
-```
+- Input: multipart form-data with `video`
+- Output: prediction, confidence, frame scores, top frames, fusion weights, metadata
 
 ### `POST /api/report`
 
-Request:
+- Input: JSON result from `/api/analyze`
+- Output: PDF report download
 
-- JSON payload from `/api/analyze` response.
+## Core Output Fields
 
-Response:
+- `prediction`
+- `confidence`
+- `video_score`
+- `audio_score`
+- `fake_frame_ratio`
+- `frame_predictions`
+- `fusion_weights`
+- `top_frames`
+- `decision_summary`
+- `metadata`
 
-- downloadable PDF (`analysis_report.pdf`).
+## Limitations
 
-## 8) Research Context and Design Rationale
+- Requires `best_model.pt` for meaningful predictions
+- Face detection can fail under occlusion, extreme angles, or low-light videos
+- Depends on system `ffmpeg` installation
+- Fixed input lengths may not capture all long-video artifacts
 
-This implementation follows a multimodal robustness hypothesis: deepfake traces may surface differently across modalities, and modality reliability can vary by sample. The gating mechanism is intended to adaptively balance visual and audio evidence rather than rely on static fusion.
+## Future Improvements
 
-Interpretability is operationalized in three layers:
-
-- **Global**: final class + confidence.
-- **Modal**: learned fusion weights (visual vs audio contribution).
-- **Temporal**: per-frame fake likelihood and ranked suspicious frames.
-
-This aligns with practical forensic workflows where analysts need traceable supporting evidence, not only scalar predictions.
-
-## 9) Known Limitations and Technical Notes
-
-- `best_model.pt` is required for meaningful inference; otherwise weights remain randomly initialized.
-- Haar cascade face detection is lightweight but can fail in profile views, low light, blur, or occlusion.
-- Audio extraction depends on `ffmpeg`; missing binary leads to silent fallback behavior in pipeline.
-- Fixed-size temporal/audio windows simplify deployment but may underrepresent long-form manipulations.
-- `uploads/deepfake_detection.py` indicates training-time experimentation that may not exactly match production inference defaults (for example, frame count choices), so strict train/inference parity should be verified before benchmarking claims.
+- Add test suite for API endpoints
+- Add model versioning and checkpoint provenance
+- Add configurable frontend API URL
+- Add benchmark table with ACC/F1/AUC across conditions
